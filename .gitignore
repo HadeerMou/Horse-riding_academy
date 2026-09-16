@@ -1,0 +1,24 @@
+# Next.js
+/.next/
+/out/
+node_modules/
+
+# Env — .env holds real secrets (SUPABASE_SECRET_KEY); never commit it.
+# .env.example is the only env file meant to be tracked.
+.env
+.env.local
+.env*.local
+
+# Build artifacts
+*.tsbuildinfo
+next-env.d.ts
+
+# Claude Code — settings.local.json is per-machine, not shared config
+.claude/settings.local.json
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.log
