@@ -10,7 +10,7 @@ export async function setRiderLevel(formData: FormData) {
   const level = String(formData.get("level") || "");
 
   if (!riderId || !RIDING_LEVELS.includes(level as (typeof RIDING_LEVELS)[number])) {
-    redirect("/coach?error=invalid");
+    redirect("/coach/riders?error=invalid");
   }
 
   const supabase = await createClient();
@@ -25,16 +25,17 @@ export async function setRiderLevel(formData: FormData) {
     .update({ riding_level: level, updated_at: new Date().toISOString() })
     .eq("id", riderId);
 
-  if (error) redirect("/coach?error=unknown");
+  if (error) redirect("/coach/riders?error=unknown");
 
+  revalidatePath("/coach/riders");
   revalidatePath("/coach");
   revalidatePath("/account");
-  redirect("/coach?updated=1");
+  redirect("/coach/riders?updated=1");
 }
 
 export async function cancelRiderBooking(formData: FormData) {
   const bookingId = String(formData.get("bookingId") || "");
-  if (!bookingId) redirect("/coach?error=invalid");
+  if (!bookingId) redirect("/coach/riders?error=invalid");
 
   const supabase = await createClient();
   const { data: userData } = await supabase.auth.getUser();
@@ -46,9 +47,10 @@ export async function cancelRiderBooking(formData: FormData) {
     .update({ status: "cancelled" })
     .eq("id", bookingId);
 
-  if (error) redirect("/coach?error=unknown");
+  if (error) redirect("/coach/riders?error=unknown");
 
+  revalidatePath("/coach/riders");
   revalidatePath("/coach");
   revalidatePath("/account/trial");
-  redirect("/coach?cancelled=1");
+  redirect("/coach/riders?cancelled=1");
 }

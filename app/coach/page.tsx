@@ -1,113 +1,129 @@
-import { redirect } from "next/navigation";
-import AuthHeader from "@/components/AuthHeader";
-import SignOutButton from "@/components/SignOutButton";
-import CoachNav from "@/components/CoachNav";
-import { isCoach, getAllRiders, formatRidingLevel, RIDING_LEVELS } from "@/lib/coach";
-import { formatSlotLabel } from "@/lib/trialSessions";
-import { setRiderLevel, cancelRiderBooking } from "@/lib/actions/coach";
+import Link from "next/link";
+import { createClient } from "@/lib/supabase/server";
+import { formatRidingLevel } from "@/lib/coach";
+import { formatGroupTime } from "@/lib/sessions";
+import { getCoachOverview } from "@/lib/coachOverview";
 
-const ERROR_MESSAGES: Record<string, string> = {
-  invalid: "Pick a level before saving.",
-  unknown: "Something went wrong — please try again.",
-};
+export default async function CoachOverviewPage() {
+  const supabase = await createClient();
+  const { data } = await supabase.auth.getClaims();
+  const claims = data?.claims;
+  const userMetadata = (claims?.user_metadata ?? {}) as Record<string, unknown>;
+  const name =
+    (userMetadata.full_name as string | undefined) ||
+    (userMetadata.name as string | undefined) ||
+    claims?.email ||
+    "coach";
 
-export default async function CoachPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
-}) {
-  const allowed = await isCoach();
-  if (!allowed) redirect("/account");
-
-  const params = await searchParams;
-  const errorKey = typeof params.error === "string" ? params.error : undefined;
-  const updated = params.updated === "1";
-  const cancelled = params.cancelled === "1";
-  const search = typeof params.q === "string" ? params.q.trim() : "";
-
-  const riders = await getAllRiders(search || undefined);
+  const overview = await getCoachOverview();
 
   return (
-    <div className="auth-body">
-      <AuthHeader>
-        <SignOutButton />
-      </AuthHeader>
+    <>
+      <p className="eyebrow">
+        <span></span> Coach dashboard
+      </p>
+      <h1>Welcome back, {name}.</h1>
+      <p className="auth-sub">Here&apos;s what&apos;s happening at the academy today.</p>
 
-      <main className="auth-main">
-        <div className="auth-card coach-card">
-          <p className="eyebrow">
-            <span></span> Coach dashboard
-          </p>
-          <h1>Riders.</h1>
-          <p className="auth-sub">Every registered rider, their trial status, and their assigned level.</p>
-
-          <CoachNav active="/coach" />
-
-          {errorKey && <p className="form-error">{ERROR_MESSAGES[errorKey] ?? ERROR_MESSAGES.unknown}</p>}
-          {updated && <p className="form-success">Level saved.</p>}
-          {cancelled && <p className="form-success">Booking cancelled.</p>}
-
-          <form className="coach-search" method="get">
-            <input type="search" name="q" placeholder="Search by name or email" defaultValue={search} />
-            <button className="text-button" type="submit">
-              Search
-            </button>
-          </form>
-
-          {riders.length === 0 ? (
-            <p>{search ? "No riders match that search." : "No riders have registered yet."}</p>
-          ) : (
-            <ul className="trial-slot-list">
-              {riders.map((rider) => (
-                <li key={rider.riderId} className="coach-row">
-                  <div className="trial-slot-info">
-                    <strong>{rider.riderName}</strong>
-                    <span>{rider.riderEmail}</span>
-                    <span>
-                      {rider.booking
-                        ? `${rider.booking.isUpcoming ? "Trial booked" : "Trial completed"}: ${formatSlotLabel({
-                            date: rider.booking.sessionDate,
-                            startTime: rider.booking.startTime,
-                            endTime: rider.booking.endTime,
-                          })}`
-                        : "No trial booked"}
-                    </span>
-                    <span>Current level: {formatRidingLevel(rider.ridingLevel)}</span>
-                  </div>
-
-                  <div className="coach-row-actions">
-                    <form action={setRiderLevel} className="coach-level-form">
-                      <input type="hidden" name="riderId" value={rider.riderId} />
-                      <select name="level" defaultValue={rider.ridingLevel ?? ""} required>
-                        <option value="" disabled>
-                          Choose level
-                        </option>
-                        {RIDING_LEVELS.map((level) => (
-                          <option key={level} value={level}>
-                            {formatRidingLevel(level)}
-                          </option>
-                        ))}
-                      </select>
-                      <button className="primary-button" type="submit">
-                        Save
-                      </button>
-                    </form>
-
-                    {rider.booking?.isUpcoming && (
-                      <form action={cancelRiderBooking}>
-                        <input type="hidden" name="bookingId" value={rider.booking.id} />
-                        <button className="text-button" type="submit">
-                          Cancel trial
-                        </button>
-                      </form>
-                    )}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
+      <div className="coach-stat-row" aria-label="Academy overview">
+        <div className="coach-stat">
+          <strong>{overview.riderCount}</strong>
+          <span>
+            Registered
+            <br />
+            riders
+          </span>
         </div>
-      </main>
-    </div>
+        <div className="coach-stat">
+          <strong>{overview.awaitingLevelCount}</strong>
+          <span>
+            Awaiting a<br />
+            level
+          </span>
+        </div>
+        <div className="coach-stat">
+          <strong>{overview.upcomingTrialCount}</strong>
+          <span>
+            Trials
+            <br />
+            booked
+          </span>
+        </div>
+        <div className="coach-stat">
+          <strong>{overview.pendingPaymentCount}</strong>
+          <span>
+            Payments
+            <br />
+            pending
+          </span>
+        </div>
+        <div className="coach-stat">
+          <strong>{overview.activeEnrollmentCount}</strong>
+          <span>
+            Active
+            <br />
+            enrollments
+          </span>
+        </div>
+      </div>
+
+      {(overview.awaitingLevelCount > 0 || overview.pendingPaymentCount > 0) && (
+        <>
+          <h2 className="coach-subheading">Needs attention</h2>
+          <ul className="trial-slot-list">
+            {overview.awaitingLevelCount > 0 && (
+              <li className="trial-slot-row">
+                <div className="trial-slot-info">
+                  <strong>
+                    {overview.awaitingLevelCount} rider{overview.awaitingLevelCount === 1 ? "" : "s"} awaiting a level
+                  </strong>
+                  <span>Set a level after their trial so they can enroll.</span>
+                </div>
+                <Link className="text-button" href="/coach/riders">
+                  Review riders
+                </Link>
+              </li>
+            )}
+            {overview.pendingPaymentCount > 0 && (
+              <li className="trial-slot-row">
+                <div className="trial-slot-info">
+                  <strong>
+                    {overview.pendingPaymentCount} payment{overview.pendingPaymentCount === 1 ? "" : "s"} pending
+                  </strong>
+                  <span>Mark as paid once a rider pays in cash.</span>
+                </div>
+                <Link className="text-button" href="/coach/payments">
+                  Review payments
+                </Link>
+              </li>
+            )}
+          </ul>
+        </>
+      )}
+
+      <h2 className="coach-subheading">Today&apos;s classes</h2>
+      {overview.todaysGroups.length === 0 ? (
+        <p>No group classes meet today.</p>
+      ) : (
+        <ul className="trial-slot-list">
+          {overview.todaysGroups.map((group) => (
+            <li key={`${group.id}_${group.startTime}`} className="trial-slot-row">
+              <div className="trial-slot-info">
+                <strong>
+                  {formatRidingLevel(group.level)} — {formatGroupTime(group.startTime)}–
+                  {formatGroupTime(group.endTime)}
+                </strong>
+                <span>
+                  {group.memberCount} rider{group.memberCount === 1 ? "" : "s"}
+                </span>
+              </div>
+              <Link className="primary-button" href="/coach/sessions">
+                Take attendance
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </>
   );
 }

@@ -1,17 +1,25 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 const TABS = [
-  { href: "/coach", label: "Riders" },
+  { href: "/coach", label: "Dashboard" },
+  { href: "/coach/riders", label: "Riders" },
+  { href: "/coach/groups", label: "Groups" },
+  { href: "/coach/sessions", label: "Sessions" },
   { href: "/coach/schedule", label: "Weekly schedule" },
   { href: "/coach/plans", label: "Plans" },
   { href: "/coach/payments", label: "Payments" },
 ] as const;
 
-export default function CoachNav({ active }: { active: (typeof TABS)[number]["href"] }) {
+export default function CoachNav() {
+  const pathname = usePathname();
+
   return (
-    <nav className="coach-nav">
+    <nav className="coach-sidebar" aria-label="Coach dashboard">
       {TABS.map((tab) =>
-        tab.href === active ? (
+        tab.href === pathname ? (
           <span key={tab.href} className="coach-nav-active">
             {tab.label}
           </span>

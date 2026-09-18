@@ -30,7 +30,7 @@ export default function SignInPage() {
       const supabase = createClient();
       const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
       if (signInError) throw signInError;
-      router.push("/account");
+      router.push("/");
       router.refresh();
     } catch (err) {
       setError(friendlyAuthError(err));

@@ -20,6 +20,7 @@ export async function markEnrollmentPaid(formData: FormData) {
   if (error) redirect("/coach/payments?error=unknown");
 
   revalidatePath("/coach/payments");
+  revalidatePath("/coach");
   revalidatePath("/account");
   redirect("/coach/payments?updated=1");
 }
@@ -40,6 +41,7 @@ export async function cancelEnrollment(formData: FormData) {
   if (error) redirect("/coach/payments?error=unknown");
 
   revalidatePath("/coach/payments");
+  revalidatePath("/coach");
   revalidatePath("/account");
   redirect("/coach/payments?cancelled=1");
 }

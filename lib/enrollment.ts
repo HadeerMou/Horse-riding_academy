@@ -4,6 +4,7 @@ import type { RidingLevel } from "@/lib/coach";
 export type MyEnrollment = {
   id: string;
   status: "pending" | "paid" | "cancelled";
+  sessionType: "group" | "private";
   planName: string;
   planLevel: RidingLevel;
   price: number;
@@ -18,7 +19,7 @@ export async function getMyEnrollment(): Promise<MyEnrollment | null> {
 
   const { data, error } = await supabase
     .from("enrollments")
-    .select("id, status, plans(name, level, price, session_count)")
+    .select("id, status, session_type, plans(name, level, price, session_count)")
     .eq("rider_id", user.id)
     .neq("status", "cancelled")
     .order("created_at", { ascending: false })
@@ -38,6 +39,7 @@ export async function getMyEnrollment(): Promise<MyEnrollment | null> {
   return {
     id: data.id,
     status: data.status as MyEnrollment["status"],
+    sessionType: data.session_type as MyEnrollment["sessionType"],
     planName: plan.name,
     planLevel: plan.level,
     price: Number(plan.price),

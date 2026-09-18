@@ -59,6 +59,18 @@ On by default. Optionally turn off "Confirm email" (**Authentication →
 Providers → Email**) while testing locally, so new accounts don't need a
 confirmation link first. Turn it back on before going live.
 
+**Rate limit while testing:** Supabase's built-in email sender (used for
+confirmation/reset emails) is capped very low (a handful of emails/hour).
+Repeatedly registering test accounts trips
+`over_email_send_rate_limit`. Fastest fix is the "Confirm email" toggle
+above — with it off, no email is sent at all. For production, add a custom
+SMTP provider (**Authentication → Settings → SMTP Settings**) instead of
+relying on Supabase's shared sender. [Resend](https://resend.com) is the
+easiest free option (3,000 emails/month, 100/day; it's what Supabase's own
+docs use as the example) — verify a domain, grab an API key, paste it in.
+Brevo (300/day free) or SendGrid (100/day free) work too if you need an
+alternative.
+
 ## 6. Turn on Google sign-in
 
 1. In Supabase: **Authentication → Providers → Google** → toggle it on.
@@ -103,7 +115,15 @@ settings, and deploy. Remember to add your production domain's
 Built now: registration (email/password + Google), sign-in/out, password
 reset, a protected `/account` and `/coach` dashboard (riders directory,
 weekly trial-slot schedule, plans CRUD, cash-payment tracking), trial-session
-booking, and rider enrollment in a plan once a coach sets their level.
+booking, rider enrollment in a plan once a coach sets their level, and — once
+paid — either a recurring weekly **group** class (coach-editable time slots
+per level, riders assigned into one from `/coach/groups`) or ad-hoc
+**private** sessions (individual dates scheduled from `/coach/sessions`),
+with attendance tracked either way and visible to the rider on `/account`.
 
-Not built yet, on purpose: a real payment provider (cash-only for now), and
-session/attendance tracking for riders once they're enrolled and paid.
+Not built yet, on purpose: a real payment provider (cash-only for now).
+
+If you're on an existing Supabase project (not a fresh one running
+`supabase/schema.sql`), run the numbered files in `supabase/migrations/` in
+order in the SQL Editor to pick up schema changes made after your project was
+set up.

@@ -11,6 +11,11 @@
 
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; background: var(--ink); }
+/* Coach dashboard accordions change page height on open/close — smooth
+   scroll turns the browser's resulting scroll-position correction into a
+   visible drift/jump. Keep instant scrolling there; smooth stays for the
+   homepage's anchor nav links. */
+html:has(.coach-shell) { scroll-behavior: auto; }
 body {
   margin: 0;
   min-width: 320px;
@@ -35,7 +40,7 @@ button { color: inherit; }
 }
 
 .site-header {
-  position: absolute;
+  position: fixed;
   z-index: 10;
   top: 0;
   left: 0;
@@ -382,6 +387,7 @@ h1 em { color: var(--gold); font-weight: 400; }
 .auth-switch a { color: var(--gold-bright); }
 .auth-switch a:hover, .auth-switch a:focus-visible { text-decoration: underline; }
 
+.account-card { width: min(640px, 100%); }
 .account-card h1 { margin-bottom: 26px; }
 .account-status { padding: 20px; margin-bottom: 16px; background: var(--ink); border: 1px solid var(--line); }
 .account-status--muted { opacity: .8; }
@@ -389,6 +395,7 @@ h1 em { color: var(--gold); font-weight: 400; }
 .account-status-row strong { color: var(--gold-bright); font-family: "Italiana", serif; font-size: 1rem; letter-spacing: 0; text-transform: none; font-weight: 400; }
 .account-status p { margin: 0 0 14px; color: #918d83; font-size: .86rem; line-height: 1.6; }
 .account-status p:last-child { margin-bottom: 0; }
+.account-subheading { margin: 22px 0 12px; font-family: "Italiana", serif; font-size: 1rem; font-weight: 400; color: var(--paper); }
 
 .form-success {
   margin: 0 0 20px;
@@ -421,7 +428,63 @@ h1 em { color: var(--gold); font-weight: 400; }
   .trial-slot-row .primary-button { justify-content: center; }
 }
 
-.coach-card { width: min(680px, 100%); }
+.session-list { list-style: none; margin: 0 0 16px; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.session-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--ink);
+  border: 1px solid var(--line);
+  font-size: .82rem;
+}
+.session-date { color: var(--paper); flex: 1; }
+.session-status {
+  font-size: .72rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border: 1px solid currentColor;
+}
+.session-status--scheduled { color: #a7a296; }
+.session-status--attended { color: #a8d1a2; }
+.session-status--missed { color: #e7a696; }
+.session-status--excused { color: var(--gold-bright); }
+.session-row-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-left: auto; }
+
+.attendance-form { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-left: auto; }
+.attendance-form input[type="date"] {
+  min-height: 36px;
+  padding: 0 10px;
+  background: var(--paper);
+  color: #171815;
+  border: 0;
+  font-size: .8rem;
+}
+
+.enroll-form { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
+.session-type-option { display: flex; align-items: center; gap: 6px; font-size: .78rem; color: #a7a296; }
+.session-type-option input { accent-color: var(--gold); }
+
+.coach-shell {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  align-items: start;
+  width: 100%;
+  max-width: 1360px;
+  margin: 0 auto;
+}
+
+.coach-content {
+  padding: clamp(32px, 4vw, 56px) clamp(24px, 4vw, 56px);
+  width: 100%;
+  max-width: 1100px;
+}
+.coach-content .eyebrow { margin-bottom: 18px; }
+.coach-content h1 { margin: 0 0 12px; font-size: clamp(2.1rem, 3.2vw, 2.7rem); letter-spacing: -.02em; }
+
 .coach-row { flex-direction: column; align-items: stretch; gap: 14px; }
 .coach-level-form { display: flex; gap: 10px; }
 .coach-level-form select {
@@ -436,10 +499,36 @@ h1 em { color: var(--gold); font-weight: 400; }
 }
 .coach-level-form .primary-button { min-height: 44px; padding: 0 18px; white-space: nowrap; }
 
-.coach-nav { display: flex; gap: 22px; margin-bottom: 26px; padding-bottom: 18px; border-bottom: 1px solid var(--line); font-size: .82rem; }
-.coach-nav a { color: #a7a296; }
-.coach-nav a:hover, .coach-nav a:focus-visible { color: var(--gold-bright); }
-.coach-nav-active { color: var(--gold-bright); font-weight: 600; }
+.coach-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: clamp(32px, 4vw, 48px) 20px;
+  border-right: 1px solid var(--line);
+  position: sticky;
+  top: 0;
+  font-size: .84rem;
+}
+.coach-sidebar a, .coach-sidebar .coach-nav-active {
+  padding: 11px 14px;
+  border-left: 2px solid transparent;
+}
+.coach-sidebar a { color: #a7a296; }
+.coach-sidebar a:hover, .coach-sidebar a:focus-visible { color: var(--gold-bright); }
+.coach-nav-active { color: var(--gold-bright); font-weight: 600; border-left-color: var(--gold); background: var(--ink); }
+
+.coach-tabs { display: flex; flex-wrap: wrap; gap: 22px; margin: 26px 0 28px; border-bottom: 1px solid var(--line); }
+.coach-tabs a, .coach-tab-active {
+  padding: 10px 4px;
+  font-size: .82rem;
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+}
+.coach-tabs a { color: #a7a296; }
+.coach-tabs a:hover, .coach-tabs a:focus-visible { color: var(--gold-bright); }
+.coach-tab-active { color: var(--gold-bright); font-weight: 600; border-bottom-color: var(--gold); }
+
+.coach-list-footer { margin: 4px 0 24px; }
 
 .coach-search { display: flex; gap: 10px; margin-bottom: 22px; }
 .coach-search input {
@@ -458,6 +547,43 @@ h1 em { color: var(--gold); font-weight: 400; }
 
 .coach-subheading { margin: 30px 0 14px; font-family: "Italiana", serif; font-size: 1.1rem; font-weight: 400; }
 
+.coach-stat-row { display: flex; flex-wrap: wrap; gap: 30px; margin: 30px 0 44px; }
+.coach-stat { display: grid; grid-template-columns: auto auto; align-items: center; gap: 9px; padding-left: 22px; border-left: 1px solid var(--line); }
+.coach-stat strong { grid-row: span 2; color: var(--gold-bright); font-family: "Italiana", serif; font-size: 2rem; font-weight: 400; }
+.coach-stat span { color: var(--muted); font-size: .76rem; line-height: 1.4; }
+
+.coach-panel-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 22px; align-items: start; margin-top: 20px; }
+.coach-panel { padding: 22px; border: 1px solid var(--line); background: var(--charcoal); }
+.coach-panel .coach-subheading { margin-top: 0; }
+
+.coach-accordion { display: flex; flex-direction: column; gap: 12px; margin-top: 20px; }
+.coach-accordion-item { border: 1px solid var(--line); background: var(--charcoal); }
+.coach-accordion-item summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 18px 22px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.coach-accordion-item summary::marker { content: ""; }
+.coach-accordion-item summary::-webkit-details-marker { display: none; }
+.coach-accordion-title { font-family: "Italiana", serif; font-size: 1.1rem; font-weight: 400; color: var(--paper); }
+.coach-accordion-meta { display: flex; align-items: center; gap: 14px; font-size: .78rem; color: #a7a296; }
+.coach-accordion-chevron {
+  width: 7px;
+  height: 7px;
+  border-right: 1px solid var(--gold);
+  border-bottom: 1px solid var(--gold);
+  transform: rotate(-45deg);
+  transition: transform .2s ease;
+  flex-shrink: 0;
+}
+.coach-accordion-item[open] .coach-accordion-chevron { transform: rotate(45deg); }
+.coach-accordion-body { padding: 0 22px 22px; border-top: 1px solid var(--line); }
+.coach-accordion-body .trial-slot-list { margin-top: 20px; }
+
 .slot-edit-form { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .slot-edit-form select,
 .slot-edit-form input[type="time"],
@@ -473,6 +599,20 @@ h1 em { color: var(--gold); font-weight: 400; }
 .slot-edit-form input[type="number"] { width: 64px; }
 .slot-active-toggle { display: flex; align-items: center; gap: 6px; font-size: .78rem; color: #a7a296; }
 .slot-edit-form .primary-button { min-height: 44px; padding: 0 18px; white-space: nowrap; }
+.slot-edit-form .primary-button:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+
+.weekday-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  border: 1px solid var(--line);
+  padding: 8px 12px;
+  margin: 0;
+}
+.weekday-picker legend { padding: 0 6px; font-size: .72rem; color: #a7a296; text-transform: uppercase; letter-spacing: .06em; }
+.weekday-picker label { display: flex; align-items: center; gap: 4px; font-size: .78rem; color: #a7a296; }
+.weekday-picker input { accent-color: var(--gold); }
 
 .plan-edit-form { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .plan-edit-form select,
@@ -493,6 +633,21 @@ h1 em { color: var(--gold); font-weight: 400; }
 @media (max-width: 640px) {
   .auth-header { padding: 22px 24px; }
   .auth-card { padding: 28px 22px; }
+}
+
+@media (max-width: 900px) {
+  .coach-shell { grid-template-columns: 1fr; }
+  .coach-sidebar {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 4px;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+    padding: 20px clamp(24px, 4vw, 56px);
+    position: static;
+  }
+  .coach-sidebar a, .coach-sidebar .coach-nav-active { border-left: 0; border-bottom: 2px solid transparent; }
+  .coach-nav-active { border-bottom-color: var(--gold); background: none; }
 }
 
 @media (max-width: 980px) {

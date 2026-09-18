@@ -8,8 +8,23 @@ import { createClient } from "@/lib/supabase/client";
 
 export default function SiteHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [hasRidingLevel, setHasRidingLevel] = useState(false);
   const { session } = useSession();
   const router = useRouter();
+
+  useEffect(() => {
+    if (!session) {
+      setHasRidingLevel(false);
+      return;
+    }
+    const supabase = createClient();
+    supabase
+      .from("profiles")
+      .select("riding_level")
+      .eq("id", session.user.id)
+      .maybeSingle()
+      .then(({ data }) => setHasRidingLevel(Boolean(data?.riding_level)));
+  }, [session]);
 
   useEffect(() => {
     document.body.style.overflow = menuOpen ? "hidden" : "";
@@ -63,9 +78,11 @@ export default function SiteHeader() {
               Sign in
             </Link>
           )}
-          <a className="outline-button" href="#programs">
-            Find your level
-          </a>
+          {!hasRidingLevel && (
+            <a className="outline-button" href="#programs">
+              Find your level
+            </a>
+          )}
           <button
             className="menu-button"
             type="button"
@@ -107,9 +124,11 @@ export default function SiteHeader() {
               Sign in
             </Link>
           )}
-          <a className="outline-button" href="#programs" onClick={() => setMenuOpen(false)}>
-            Find your level
-          </a>
+          {!hasRidingLevel && (
+            <a className="outline-button" href="#programs" onClick={() => setMenuOpen(false)}>
+              Find your level
+            </a>
+          )}
         </div>
       </div>
     </>

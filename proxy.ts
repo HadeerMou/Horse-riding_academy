@@ -41,7 +41,7 @@ export async function proxy(request: NextRequest) {
   }
 
   if ((pathname === "/signin" || pathname === "/register") && signedIn) {
-    return NextResponse.redirect(new URL("/account", request.url));
+    return NextResponse.redirect(new URL("/", request.url));
   }
 
   return response;
