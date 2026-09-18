@@ -11,6 +11,7 @@ const TABS = [
   { href: "/coach/schedule", label: "Weekly schedule" },
   { href: "/coach/plans", label: "Plans" },
   { href: "/coach/payments", label: "Payments" },
+  { href: "/coach/notifications", label: "Notifications" },
 ] as const;
 
 export default function CoachNav() {

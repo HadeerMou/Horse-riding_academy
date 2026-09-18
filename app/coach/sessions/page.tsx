@@ -7,6 +7,7 @@ import { getOpenMakeupSpotsForLevel, ensureCurrentMonthSessions } from "@/lib/ma
 import { getUpcomingExcusedSessions, getUpcomingMakeupBookings, getUpcomingCapacityOverrides } from "@/lib/coachMakeup";
 import { formatSessionDate, formatGroupTime, sessionStatusLabel } from "@/lib/sessions";
 import { scheduleSession, markSessionStatus, removeSession, addCapacityOverride, removeCapacityOverride } from "@/lib/actions/coachSessions";
+import FlashMessage from "@/components/FlashMessage";
 
 const ERROR_MESSAGES: Record<string, string> = {
   invalid: "Pick a date before scheduling.",
@@ -83,12 +84,16 @@ export default async function CoachSessionsPage({
       <h1>Sessions.</h1>
       <p className="auth-sub">Take attendance for group classes, and schedule dates for private riders.</p>
 
-      {errorKey && <p className="form-error">{ERROR_MESSAGES[errorKey] ?? ERROR_MESSAGES.unknown}</p>}
-      {scheduled && <p className="form-success">Session scheduled.</p>}
-      {updated && <p className="form-success">Attendance updated.</p>}
-      {removed && <p className="form-success">Session removed.</p>}
-      {spotAdded && <p className="form-success">Makeup spot added.</p>}
-      {spotRemoved && <p className="form-success">Makeup spot removed.</p>}
+      {errorKey && (
+        <FlashMessage param="error" tone="error">
+          {ERROR_MESSAGES[errorKey] ?? ERROR_MESSAGES.unknown}
+        </FlashMessage>
+      )}
+      {scheduled && <FlashMessage param="scheduled">Session scheduled.</FlashMessage>}
+      {updated && <FlashMessage param="updated">Attendance updated.</FlashMessage>}
+      {removed && <FlashMessage param="removed">Session removed.</FlashMessage>}
+      {spotAdded && <FlashMessage param="spotAdded">Makeup spot added.</FlashMessage>}
+      {spotRemoved && <FlashMessage param="spotRemoved">Makeup spot removed.</FlashMessage>}
 
       <nav className="coach-tabs" aria-label="Sessions views">
         {TABS.map((tab) => {

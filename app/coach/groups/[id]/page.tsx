@@ -13,6 +13,7 @@ import {
   addGroupMember,
   removeGroupMember,
 } from "@/lib/actions/lessonGroups";
+import FlashMessage from "@/components/FlashMessage";
 
 function tallySessions(day: GroupSessionDate): string {
   const counts = { scheduled: 0, attended: 0, missed: 0, excused: 0 };
@@ -74,12 +75,16 @@ export default async function CoachGroupDetailPage({
         {!group.active && " · Inactive"}
       </p>
 
-      {errorKey && <p className="form-error">{ERROR_MESSAGES[errorKey] ?? ERROR_MESSAGES.unknown}</p>}
-      {updated && <p className="form-success">Group updated.</p>}
-      {added && <p className="form-success">Rider added — this month's classes are scheduled for her.</p>}
-      {removed && <p className="form-success">Rider removed.</p>}
-      {timeAdded && <p className="form-success">Meeting time added.</p>}
-      {timeRemoved && <p className="form-success">Meeting time removed.</p>}
+      {errorKey && (
+        <FlashMessage param="error" tone="error">
+          {ERROR_MESSAGES[errorKey] ?? ERROR_MESSAGES.unknown}
+        </FlashMessage>
+      )}
+      {updated && <FlashMessage param="updated">Group updated.</FlashMessage>}
+      {added && <FlashMessage param="added">Rider added — this month's classes are scheduled for her.</FlashMessage>}
+      {removed && <FlashMessage param="removed">Rider removed.</FlashMessage>}
+      {timeAdded && <FlashMessage param="timeAdded">Meeting time added.</FlashMessage>}
+      {timeRemoved && <FlashMessage param="timeRemoved">Meeting time removed.</FlashMessage>}
 
       <div className="coach-panel-grid">
         <div className="coach-panel">

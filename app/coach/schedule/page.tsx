@@ -1,5 +1,6 @@
 import { getAllTrialSlots, WEEKDAYS } from "@/lib/coachSchedule";
 import { createTrialSlot, updateTrialSlot } from "@/lib/actions/coachSchedule";
+import FlashMessage from "@/components/FlashMessage";
 
 const ERROR_MESSAGES: Record<string, string> = {
   invalid: "Check the weekday, times, and capacity — capacity must be at least 1.",
@@ -26,9 +27,13 @@ export default async function CoachSchedulePage({
       <h1>Weekly schedule.</h1>
       <p className="auth-sub">These recurring times are what riders see when booking a trial session.</p>
 
-      {errorKey && <p className="form-error">{ERROR_MESSAGES[errorKey] ?? ERROR_MESSAGES.unknown}</p>}
-      {updated && <p className="form-success">Slot updated.</p>}
-      {created && <p className="form-success">New slot added.</p>}
+      {errorKey && (
+        <FlashMessage param="error" tone="error">
+          {ERROR_MESSAGES[errorKey] ?? ERROR_MESSAGES.unknown}
+        </FlashMessage>
+      )}
+      {updated && <FlashMessage param="updated">Slot updated.</FlashMessage>}
+      {created && <FlashMessage param="created">New slot added.</FlashMessage>}
 
       {slots.length === 0 ? (
         <p>No slots defined yet — add one below.</p>

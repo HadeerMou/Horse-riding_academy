@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import AuthHeader from "@/components/AuthHeader";
+import AccordionItem from "@/components/AccordionItem";
 import SignOutButton from "@/components/SignOutButton";
+import NotificationBell from "@/components/NotificationBell";
 import { createClient } from "@/lib/supabase/server";
 import { getUserTrialBooking, formatSlotLabel } from "@/lib/trialSessions";
 import { isCoach, formatRidingLevel, type RidingLevel } from "@/lib/coach";
@@ -10,7 +12,9 @@ import { getMyEnrollment } from "@/lib/enrollment";
 import { enrollInPlan } from "@/lib/actions/enrollment";
 import { getSessionsForEnrollment, getMyGroups, formatSessionDate, formatGroupTime, sessionStatusLabel } from "@/lib/sessions";
 import { ensureCurrentMonthSessions, getUnresolvedMissedGroupSessions, getOpenMakeupSpotsForLevel } from "@/lib/makeupSessions";
-import { markSessionOut, bookMakeupSpot } from "@/lib/actions/makeupSessions";
+import { markSessionOut, markSessionIn, bookMakeupSpot } from "@/lib/actions/makeupSessions";
+import { getUnreadNotificationCount } from "@/lib/notifications";
+import FlashMessage from "@/components/FlashMessage";
 
 const ENROLLMENT_STATUS_LABEL: Record<string, string> = {
   pending: "Pending — pay in cash at the academy to activate",
@@ -21,8 +25,9 @@ const ERROR_MESSAGES: Record<string, string> = {
   invalid: "Something went wrong — please try again.",
   "already-marked": "That session is already accounted for.",
   "no-missed-sessions": "You don't have a missed session to make up right now.",
-  "spot-taken": "Someone just took that spot — pick another.",
+  "spot-taken": "That spot's already been taken — for a makeup, pick another below; to undo marking out, check with your coach.",
   "already-booked": "You already have a session booked that day.",
+  "already-made-up": "You've already booked a makeup for this one — cancel that instead if you don't need it.",
   unknown: "Something went wrong — please try again.",
 };
 
@@ -37,6 +42,7 @@ export default async function AccountPage({
   const errorKey = typeof params.error === "string" ? params.error : undefined;
   const enrolled = params.enrolled === "1";
   const markedOut = params.out === "1";
+  const markedIn = params.in === "1";
   const makeupBooked = params.makeup === "1";
 
   const supabase = await createClient();
@@ -91,11 +97,15 @@ export default async function AccountPage({
       : [];
   const now = new Date();
   const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  const unreadCount = await getUnreadNotificationCount();
 
   return (
     <div className="auth-body">
       <AuthHeader>
-        <SignOutButton />
+        <div className="auth-header-actions">
+          <NotificationBell userId={claims?.sub ?? ""} initialCount={unreadCount} href="/account/notifications" />
+          <SignOutButton />
+        </div>
       </AuthHeader>
 
       <main className="auth-main">
@@ -105,20 +115,27 @@ export default async function AccountPage({
           </p>
           <h1>Welcome, {name}.</h1>
 
-          {errorKey && <p className="form-error">{ERROR_MESSAGES[errorKey] ?? ERROR_MESSAGES.unknown}</p>}
-          {enrolled && <p className="form-success">Enrolled — pay in cash at the academy to activate.</p>}
-          {markedOut && <p className="form-success">Marked out — your coach has been notified.</p>}
-          {makeupBooked && <p className="form-success">Makeup session booked.</p>}
+          {errorKey && (
+            <FlashMessage param="error" tone="error">
+              {ERROR_MESSAGES[errorKey] ?? ERROR_MESSAGES.unknown}
+            </FlashMessage>
+          )}
+          {enrolled && <FlashMessage param="enrolled">Enrolled — pay in cash at the academy to activate.</FlashMessage>}
+          {markedOut && <FlashMessage param="out">Marked out — your coach has been notified.</FlashMessage>}
+          {markedIn && <FlashMessage param="in">You're back in — your coach has been notified.</FlashMessage>}
+          {makeupBooked && <FlashMessage param="makeup">Makeup session booked.</FlashMessage>}
 
           <div className="account-status">
             <div className="account-status-row">
               <span>Riding level</span>
               <strong>{formatRidingLevel(ridingLevel)}</strong>
             </div>
-            <p>
-              A coach will meet you at your trial session and set your level — Foundation,
-              Progression, Performance, or Elite — based on where you&apos;re starting from.
-            </p>
+            {!ridingLevel && (
+              <p>
+                A coach will meet you at your trial session and set your level — Foundation,
+                Progression, Performance, or Elite — based on where you&apos;re starting from.
+              </p>
+            )}
             {trialBooking ? (
               <p>
                 Trial session booked: <strong>{formatSlotLabel(trialBooking)}</strong>
@@ -239,43 +256,67 @@ export default async function AccountPage({
                           </form>
                         </div>
                       )}
+                      {session.status === "excused" && session.date >= today && (
+                        <div className="session-row-actions">
+                          <form action={markSessionIn}>
+                            <input type="hidden" name="sessionId" value={session.id} />
+                            <button className="text-button" type="submit">
+                              I&apos;ll attend after all
+                            </button>
+                          </form>
+                        </div>
+                      )}
                     </li>
                   ))}
                 </ul>
               )}
 
+              {/* The open-spot list is long and only matters when the rider
+                  actually wants to rebook, so it stays folded away behind the
+                  missed-session count until they open it. */}
               {enrollment.sessionType === "group" && unresolvedMissed.length > 0 && (
-                <>
-                  <h3 className="account-subheading">Make up a missed session</h3>
-                  <p>
-                    You have {unresolvedMissed.length} missed session{unresolvedMissed.length === 1 ? "" : "s"} to
-                    make up. Book any open spot below.
-                  </p>
-                  {openSpots.length === 0 ? (
-                    <p>No open spots right now — check back soon.</p>
-                  ) : (
-                    <ul className="trial-slot-list">
-                      {openSpots.map((spot) => (
-                        <li key={`${spot.groupId}_${spot.date}`} className="trial-slot-row">
-                          <div className="trial-slot-info">
-                            <strong>
-                              {formatSessionDate(spot.date)} — {spot.weekdayLabel} {formatGroupTime(spot.startTime)}–
-                              {formatGroupTime(spot.endTime)}
-                            </strong>
-                            <span>{spot.available} spot(s) open</span>
-                          </div>
-                          <form action={bookMakeupSpot}>
-                            <input type="hidden" name="groupId" value={spot.groupId} />
-                            <input type="hidden" name="date" value={spot.date} />
-                            <button className="primary-button" type="submit">
-                              Book this spot
-                            </button>
-                          </form>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </>
+                <div className="makeup-accordion">
+                  <AccordionItem
+                    summary={
+                      <>
+                        <span className="coach-accordion-title">Make up a missed session</span>
+                        <span className="coach-accordion-meta">
+                          {unresolvedMissed.length} to book
+                          <span className="coach-accordion-chevron" aria-hidden="true" />
+                        </span>
+                      </>
+                    }
+                  >
+                    <p>
+                      You have {unresolvedMissed.length} missed session{unresolvedMissed.length === 1 ? "" : "s"} to
+                      make up. Book any open spot below.
+                    </p>
+                    {openSpots.length === 0 ? (
+                      <p>No open spots right now — check back soon.</p>
+                    ) : (
+                      <ul className="trial-slot-list">
+                        {openSpots.map((spot) => (
+                          <li key={`${spot.groupId}_${spot.date}`} className="trial-slot-row">
+                            <div className="trial-slot-info">
+                              <strong>
+                                {formatSessionDate(spot.date)} — {spot.weekdayLabel} {formatGroupTime(spot.startTime)}–
+                                {formatGroupTime(spot.endTime)}
+                              </strong>
+                              <span>{spot.available} spot(s) open</span>
+                            </div>
+                            <form action={bookMakeupSpot}>
+                              <input type="hidden" name="groupId" value={spot.groupId} />
+                              <input type="hidden" name="date" value={spot.date} />
+                              <button className="primary-button" type="submit">
+                                Book this spot
+                              </button>
+                            </form>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </AccordionItem>
+                </div>
               )}
             </div>
           )}

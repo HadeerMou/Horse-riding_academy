@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { notifyCoaches, getRiderDisplayName } from "@/lib/notifications";
 
 export async function enrollInPlan(formData: FormData) {
   const planId = String(formData.get("planId") || "");
@@ -21,6 +22,15 @@ export async function enrollInPlan(formData: FormData) {
   });
 
   if (error) redirect("/account?error=unknown");
+
+  const { data: plan } = await supabase.from("plans").select("name").eq("id", planId).maybeSingle();
+  const riderName = await getRiderDisplayName(supabase, user.id);
+  await notifyCoaches(
+    supabase,
+    `${riderName} enrolled`,
+    `${plan?.name ?? "A plan"} — ${sessionType} — pending payment`,
+    "/coach/payments"
+  );
 
   revalidatePath("/account");
   redirect("/account?enrolled=1");

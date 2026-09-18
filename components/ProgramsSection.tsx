@@ -68,6 +68,7 @@ export default function ProgramsSection({ plans }: { plans: Record<RidingLevelKe
       className={`program-preview ${revealClassName}`}
       id="programs"
       aria-labelledby="program-title"
+      data-header-surface="light"
     >
       <p className="eyebrow">
         <span></span> Your next stride

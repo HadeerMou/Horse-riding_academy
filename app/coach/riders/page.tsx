@@ -1,6 +1,7 @@
 import { getAllRiders, formatRidingLevel, RIDING_LEVELS } from "@/lib/coach";
 import { formatSlotLabel } from "@/lib/trialSessions";
 import { setRiderLevel, cancelRiderBooking } from "@/lib/actions/coach";
+import FlashMessage from "@/components/FlashMessage";
 
 const ERROR_MESSAGES: Record<string, string> = {
   invalid: "Pick a level before saving.",
@@ -28,9 +29,13 @@ export default async function CoachRidersPage({
       <h1>Riders.</h1>
       <p className="auth-sub">Every registered rider, their trial status, and their assigned level.</p>
 
-      {errorKey && <p className="form-error">{ERROR_MESSAGES[errorKey] ?? ERROR_MESSAGES.unknown}</p>}
-      {updated && <p className="form-success">Level saved.</p>}
-      {cancelled && <p className="form-success">Booking cancelled.</p>}
+      {errorKey && (
+        <FlashMessage param="error" tone="error">
+          {ERROR_MESSAGES[errorKey] ?? ERROR_MESSAGES.unknown}
+        </FlashMessage>
+      )}
+      {updated && <FlashMessage param="updated">Level saved.</FlashMessage>}
+      {cancelled && <FlashMessage param="cancelled">Booking cancelled.</FlashMessage>}
 
       <form className="coach-search" method="get">
         <input type="search" name="q" placeholder="Search by name or email" defaultValue={search} />

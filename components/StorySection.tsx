@@ -13,7 +13,13 @@ export default function StorySection() {
   const { ref, revealClassName } = useReveal<HTMLElement>();
 
   return (
-    <section ref={ref} className={`story ${revealClassName}`} id="story" aria-labelledby="story-title">
+    <section
+      ref={ref}
+      className={`story ${revealClassName}`}
+      id="story"
+      aria-labelledby="story-title"
+      data-header-surface="light"
+    >
       <div className="story-copy">
         <p className="eyebrow">
           <span></span> The academy

@@ -1,8 +1,12 @@
 import Link from "next/link";
 import AuthHeader from "@/components/AuthHeader";
 import SignOutButton from "@/components/SignOutButton";
+import NotificationBell from "@/components/NotificationBell";
+import { createClient } from "@/lib/supabase/server";
 import { getUpcomingTrialSlots, getUserTrialBooking, formatSlotLabel } from "@/lib/trialSessions";
 import { bookTrialSession, cancelTrialBooking } from "@/lib/actions/trialSession";
+import { getUnreadNotificationCount } from "@/lib/notifications";
+import FlashMessage from "@/components/FlashMessage";
 
 const ERROR_MESSAGES: Record<string, string> = {
   full: "That session just filled up — pick another time below.",
@@ -23,11 +27,17 @@ export default async function TrialSessionPage({
 
   const existingBooking = await getUserTrialBooking();
   const slots = existingBooking ? [] : await getUpcomingTrialSlots();
+  const unreadCount = await getUnreadNotificationCount();
+  const supabase = await createClient();
+  const { data: userData } = await supabase.auth.getUser();
 
   return (
     <div className="auth-body">
       <AuthHeader>
-        <SignOutButton />
+        <div className="auth-header-actions">
+          <NotificationBell userId={userData?.user?.id ?? ""} initialCount={unreadCount} href="/account/notifications" />
+          <SignOutButton />
+        </div>
       </AuthHeader>
 
       <main className="auth-main">
@@ -40,9 +50,13 @@ export default async function TrialSessionPage({
             Pick an open time below — your coach will meet you there and set your riding level.
           </p>
 
-          {errorKey && <p className="form-error">{ERROR_MESSAGES[errorKey] ?? ERROR_MESSAGES.unknown}</p>}
-          {booked && <p className="form-success">You&apos;re booked — see you there!</p>}
-          {cancelled && <p className="form-success">Your booking was cancelled.</p>}
+          {errorKey && (
+            <FlashMessage param="error" tone="error">
+              {ERROR_MESSAGES[errorKey] ?? ERROR_MESSAGES.unknown}
+            </FlashMessage>
+          )}
+          {booked && <FlashMessage param="booked">You&apos;re booked — see you there!</FlashMessage>}
+          {cancelled && <FlashMessage param="cancelled">Your booking was cancelled.</FlashMessage>}
 
           {existingBooking ? (
             <div className="account-status">

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { RIDING_LEVELS } from "@/lib/coach";
+import { notifyUser } from "@/lib/notifications";
 
 // The list page reopens whichever level's accordion was open instead of
 // collapsing back to all-closed after an action.
@@ -226,7 +227,7 @@ export async function addGroupMember(formData: FormData) {
 
   const { data: group, error: groupError } = await supabase
     .from("lesson_groups")
-    .select("capacity, lesson_group_members(id)")
+    .select("name, capacity, lesson_group_members(id)")
     .eq("id", groupId)
     .single();
   if (groupError || !group) redirect(groupUrl(groupId, { error: "unknown" }));
@@ -255,6 +256,8 @@ export async function addGroupMember(formData: FormData) {
   // than waiting for the next lazy call on /account or /coach/sessions.
   await supabase.rpc("ensure_group_sessions_for_month");
 
+  await notifyUser(supabase, enrollment.rider_id, "You've been added to a group", group.name, "/account");
+
   revalidatePath("/coach/groups");
   revalidatePath(`/coach/groups/${groupId}`);
   revalidatePath("/coach");
@@ -273,7 +276,7 @@ export async function removeGroupMember(formData: FormData) {
 
   const { data: membership, error: membershipError } = await supabase
     .from("lesson_group_members")
-    .select("enrollment_id, group_id")
+    .select("enrollment_id, group_id, rider_id, lesson_groups(name)")
     .eq("id", membershipId)
     .single();
   if (membershipError || !membership) redirect(groupUrl(groupId, { error: "unknown" }));
@@ -292,6 +295,9 @@ export async function removeGroupMember(formData: FormData) {
     .eq("group_id", membership.group_id)
     .eq("status", "scheduled")
     .gte("session_date", today);
+
+  const group = membership.lesson_groups as unknown as { name: string } | null;
+  await notifyUser(supabase, membership.rider_id, "You've been removed from a group", group?.name, "/account");
 
   revalidatePath("/coach/groups");
   revalidatePath(`/coach/groups/${groupId}`);

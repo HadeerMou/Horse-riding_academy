@@ -1,6 +1,7 @@
 import { RIDING_LEVELS, formatRidingLevel } from "@/lib/coach";
 import { getAllPlans } from "@/lib/plans";
 import { createPlan, updatePlan, deletePlan } from "@/lib/actions/coachPlans";
+import FlashMessage from "@/components/FlashMessage";
 
 const ERROR_MESSAGES: Record<string, string> = {
   invalid: "Fill in a level, name, price, and number of sessions.",
@@ -29,10 +30,14 @@ export default async function CoachPlansPage({
       <h1>Plans.</h1>
       <p className="auth-sub">What riders can enroll in once their level is set.</p>
 
-      {errorKey && <p className="form-error">{ERROR_MESSAGES[errorKey] ?? ERROR_MESSAGES.unknown}</p>}
-      {updated && <p className="form-success">Plan updated.</p>}
-      {created && <p className="form-success">New plan added.</p>}
-      {deleted && <p className="form-success">Plan deleted.</p>}
+      {errorKey && (
+        <FlashMessage param="error" tone="error">
+          {ERROR_MESSAGES[errorKey] ?? ERROR_MESSAGES.unknown}
+        </FlashMessage>
+      )}
+      {updated && <FlashMessage param="updated">Plan updated.</FlashMessage>}
+      {created && <FlashMessage param="created">New plan added.</FlashMessage>}
+      {deleted && <FlashMessage param="deleted">Plan deleted.</FlashMessage>}
 
       {plans.length === 0 ? (
         <p>No plans yet — add one below.</p>

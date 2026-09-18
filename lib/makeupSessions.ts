@@ -2,8 +2,6 @@ import { createClient } from "@/lib/supabase/server";
 import { WEEKDAYS } from "@/lib/coachSchedule";
 import type { RidingLevel } from "@/lib/coach";
 
-const MAKEUP_WINDOW_DAYS = 28;
-
 // Local calendar date, not UTC — date.toISOString() converts to UTC first,
 // which rolls the date back a day in any timezone ahead of UTC and would
 // desync the string from the weekday it was generated for.
@@ -12,6 +10,11 @@ function toDateString(date: Date): string {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+// The last calendar day of the month `date` falls in.
+function endOfMonth(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth() + 1, 0);
 }
 
 // Auto-schedules every group member's fixed classes for the current month
@@ -75,11 +78,14 @@ export type OpenMakeupSpot = {
 };
 
 // Computed availability only — never exposes another rider's attendance row,
-// see the open_makeup_spots_for_level() security-definer function.
+// see the open_makeup_spots_for_level() security-definer function. Bounded to
+// the rest of the current month — a session missed this month has to be made
+// up this month, not carried into the next.
 export async function getOpenMakeupSpotsForLevel(level: RidingLevel): Promise<OpenMakeupSpot[]> {
   const supabase = await createClient();
-  const from = toDateString(new Date());
-  const to = toDateString(new Date(Date.now() + MAKEUP_WINDOW_DAYS * 24 * 60 * 60 * 1000));
+  const now = new Date();
+  const from = toDateString(now);
+  const to = toDateString(endOfMonth(now));
 
   const { data, error } = await supabase.rpc("open_makeup_spots_for_level", {
     p_level: level,

@@ -7,6 +7,7 @@ import { getAllLessonGroups } from "@/lib/lessonGroups";
 import { getClassTimeSlots } from "@/lib/classTimeSlots";
 import { createLessonGroup, deleteLessonGroup } from "@/lib/actions/lessonGroups";
 import { addClassTimeSlot, removeClassTimeSlot } from "@/lib/actions/classTimeSlots";
+import FlashMessage from "@/components/FlashMessage";
 
 const ERROR_MESSAGES: Record<string, string> = {
   invalid: "Every group needs a name, at least one weekday, a time slot, and a capacity of at least 1.",
@@ -42,11 +43,15 @@ export default async function CoachGroupsPage({
         on a private plan aren&apos;t scheduled here — see Sessions instead.
       </p>
 
-      {errorKey && <p className="form-error">{ERROR_MESSAGES[errorKey] ?? ERROR_MESSAGES.unknown}</p>}
-      {created && <p className="form-success">Group added.</p>}
-      {deleted && <p className="form-success">Group deleted.</p>}
-      {slotAdded && <p className="form-success">Time slot added.</p>}
-      {slotRemoved && <p className="form-success">Time slot removed.</p>}
+      {errorKey && (
+        <FlashMessage param="error" tone="error">
+          {ERROR_MESSAGES[errorKey] ?? ERROR_MESSAGES.unknown}
+        </FlashMessage>
+      )}
+      {created && <FlashMessage param="created">Group added.</FlashMessage>}
+      {deleted && <FlashMessage param="deleted">Group deleted.</FlashMessage>}
+      {slotAdded && <FlashMessage param="slotAdded">Time slot added.</FlashMessage>}
+      {slotRemoved && <FlashMessage param="slotRemoved">Time slot removed.</FlashMessage>}
 
       <div className="coach-panel">
         <h2 className="coach-subheading" style={{ marginTop: 0 }}>

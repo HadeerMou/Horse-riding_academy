@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { notifyCoaches, getRiderDisplayName } from "@/lib/notifications";
+import { formatSessionDate } from "@/lib/sessions";
 
 export async function bookTrialSession(formData: FormData) {
   const slotId = String(formData.get("slotId") || "");
@@ -43,6 +45,9 @@ export async function bookTrialSession(formData: FormData) {
   if (error) {
     redirect(error.code === "23505" ? "/account/trial?error=duplicate" : "/account/trial?error=unknown");
   }
+
+  const riderName = await getRiderDisplayName(supabase, user.id);
+  await notifyCoaches(supabase, `${riderName} booked a trial session`, formatSessionDate(date), "/coach/riders");
 
   revalidatePath("/account/trial");
   redirect("/account/trial?booked=1");

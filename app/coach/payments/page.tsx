@@ -2,6 +2,7 @@ import { formatRidingLevel } from "@/lib/coach";
 import { getAllEnrollments } from "@/lib/coachPayments";
 import { formatPrice } from "@/lib/plans";
 import { markEnrollmentPaid, cancelEnrollment } from "@/lib/actions/coachPayments";
+import FlashMessage from "@/components/FlashMessage";
 
 const ERROR_MESSAGES: Record<string, string> = {
   invalid: "Missing enrollment.",
@@ -34,9 +35,13 @@ export default async function CoachPaymentsPage({
       <h1>Payments.</h1>
       <p className="auth-sub">Cash only for now — mark an enrollment paid once the rider pays in person.</p>
 
-      {errorKey && <p className="form-error">{ERROR_MESSAGES[errorKey] ?? ERROR_MESSAGES.unknown}</p>}
-      {updated && <p className="form-success">Marked as paid.</p>}
-      {cancelled && <p className="form-success">Enrollment cancelled.</p>}
+      {errorKey && (
+        <FlashMessage param="error" tone="error">
+          {ERROR_MESSAGES[errorKey] ?? ERROR_MESSAGES.unknown}
+        </FlashMessage>
+      )}
+      {updated && <FlashMessage param="updated">Marked as paid.</FlashMessage>}
+      {cancelled && <FlashMessage param="cancelled">Enrollment cancelled.</FlashMessage>}
 
       {enrollments.length === 0 ? (
         <p>No enrollments yet.</p>

@@ -14,14 +14,17 @@ create table public.profiles (
   email text not null,
   full_name text,
   riding_level text check (riding_level in ('foundation', 'progression', 'performance', 'elite')),
+  -- Single source of truth for "is this account a coach" — flip this on for
+  -- your own account after it's created: `update profiles set is_coach = true
+  -- where email = 'you@example.com'`. Every other coach-detection check
+  -- (is_coach(), notify_coaches()) reads this one column, so there's exactly
+  -- one place to manage who's a coach.
+  is_coach boolean not null default false,
   updated_at timestamptz not null default now()
 );
 
 alter table public.profiles enable row level security;
 
--- Single source of truth for "is this signed-in user a coach" — an email
--- allowlist for now; replace with your own coach email(s) below, and add
--- more as more coaches join.
 create or replace function public.is_coach()
 returns boolean
 language sql
@@ -29,10 +32,7 @@ stable
 security definer
 set search_path = public
 as $$
-  select coalesce(
-    (select email from public.profiles where id = auth.uid()) in ('coach@example.com'),
-    false
-  );
+  select coalesce((select is_coach from public.profiles where id = auth.uid()), false);
 $$;
 
 revoke execute on function public.is_coach() from public, anon;
@@ -246,6 +246,18 @@ create policy "enrollment_sessions_update_own_excuse" on public.enrollment_sessi
     rider_id = (select auth.uid()) and status = 'scheduled' and session_date >= current_date
   ) with check (
     rider_id = (select auth.uid()) and status = 'excused'
+  );
+
+-- ...and can undo that back to attending, as long as it's still upcoming.
+-- The server action layer checks that this won't overbook the class (someone
+-- may have already claimed the spot as a makeup) or double-resolve an
+-- already-made-up miss — RLS here only enforces ownership, status
+-- transition, and timing.
+create policy "enrollment_sessions_update_own_uncancel" on public.enrollment_sessions
+  for update to authenticated using (
+    rider_id = (select auth.uid()) and status = 'excused' and session_date >= current_date
+  ) with check (
+    rider_id = (select auth.uid()) and status = 'scheduled'
   );
 
 -- =============================================================================
@@ -535,3 +547,78 @@ $$;
 
 revoke execute on function public.ensure_group_sessions_for_month() from public, anon;
 grant execute on function public.ensure_group_sessions_for_month() to authenticated;
+
+-- =============================================================================
+-- 9. Notifications — the coach and a rider each see their own feed of what
+--    just happened on the other side (a rider marking out or booking a
+--    makeup spot notifies the coach; the coach setting a level, placing
+--    someone in a group, taking payment, or scheduling/cancelling a session
+--    notifies that rider).
+-- =============================================================================
+create table public.notifications (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  title text not null,
+  body text,
+  url text,
+  read boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
+create index notifications_user_idx on public.notifications (user_id, created_at desc);
+
+alter table public.notifications enable row level security;
+
+create policy "notifications_select_own" on public.notifications
+  for select to authenticated using (user_id = (select auth.uid()));
+create policy "notifications_update_own" on public.notifications
+  for update to authenticated using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
+
+-- Notifications are always system-generated on someone else's behalf (a
+-- rider's action notifies the coach, or vice versa) — never a direct user
+-- insert of their own row — so both helpers below run as security definer.
+create or replace function public.create_notification(p_user_id uuid, p_title text, p_body text default null, p_url text default null)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.notifications (user_id, title, body, url) values (p_user_id, p_title, p_body, p_url);
+end;
+$$;
+
+revoke execute on function public.create_notification(uuid, text, text, text) from public, anon;
+grant execute on function public.create_notification(uuid, text, text, text) to authenticated;
+
+-- Fans a notification out to every coach account — reads the same
+-- profiles.is_coach flag as is_coach() (section 1, above).
+create or replace function public.notify_coaches(p_title text, p_body text default null, p_url text default null)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.notifications (user_id, title, body, url)
+  select id, p_title, p_body, p_url from public.profiles where is_coach = true;
+end;
+$$;
+
+revoke execute on function public.notify_coaches(text, text, text) from public, anon;
+grant execute on function public.notify_coaches(text, text, text) to authenticated;
+
+-- Lets the browser subscribe to a user's own notifications live (Postgres
+-- Changes over Realtime) instead of only seeing the unread count as of the
+-- last page load. RLS still applies to realtime subscriptions, so this only
+-- ever streams a user's own rows regardless of what filter the client asks
+-- for.
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'notifications'
+  ) then
+    alter publication supabase_realtime add table public.notifications;
+  end if;
+end $$;

@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { notifyUser } from "@/lib/notifications";
+import { formatSessionDate } from "@/lib/sessions";
 
 // Every redirect carries back the active tab, whether the "show all" toggle
 // was on, and which accordion row (a group or a rider) was open — so the
@@ -51,6 +53,14 @@ export async function scheduleSession(formData: FormData) {
 
   if (error) redirect(sessionsUrl({ error: error.code === "23505" ? "duplicate" : "unknown", ...ctx }));
 
+  await notifyUser(
+    supabase,
+    enrollment.rider_id,
+    makeupOfSessionId ? "A makeup session was scheduled for you" : "A new session was scheduled for you",
+    formatSessionDate(date),
+    "/account"
+  );
+
   revalidatePath("/coach/sessions");
   revalidatePath("/account");
   redirect(sessionsUrl({ scheduled: "1", ...ctx }));
@@ -68,8 +78,24 @@ export async function markSessionStatus(formData: FormData) {
   const { data: userData } = await supabase.auth.getUser();
   if (!userData?.user) redirect("/signin");
 
+  const { data: session } = await supabase
+    .from("enrollment_sessions")
+    .select("rider_id, session_date")
+    .eq("id", sessionId)
+    .maybeSingle();
+
   const { error } = await supabase.from("enrollment_sessions").update({ status }).eq("id", sessionId);
   if (error) redirect(sessionsUrl({ error: "unknown", ...ctx }));
+
+  if (session && (status === "attended" || status === "missed")) {
+    await notifyUser(
+      supabase,
+      session.rider_id,
+      status === "attended" ? "Marked attended" : "Marked missed",
+      formatSessionDate(session.session_date),
+      "/account"
+    );
+  }
 
   revalidatePath("/coach/sessions");
   revalidatePath("/account");
@@ -85,8 +111,18 @@ export async function removeSession(formData: FormData) {
   const { data: userData } = await supabase.auth.getUser();
   if (!userData?.user) redirect("/signin");
 
+  const { data: session } = await supabase
+    .from("enrollment_sessions")
+    .select("rider_id, session_date")
+    .eq("id", sessionId)
+    .maybeSingle();
+
   const { error } = await supabase.from("enrollment_sessions").delete().eq("id", sessionId);
   if (error) redirect(sessionsUrl({ error: "unknown", ...ctx }));
+
+  if (session) {
+    await notifyUser(supabase, session.rider_id, "A scheduled session was removed", formatSessionDate(session.session_date), "/account");
+  }
 
   revalidatePath("/coach/sessions");
   revalidatePath("/account");

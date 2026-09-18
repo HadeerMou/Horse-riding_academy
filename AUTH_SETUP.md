@@ -25,9 +25,14 @@ project. Wait for it to finish provisioning (~2 minutes).
 
 1. In Supabase: **SQL Editor → New query**.
 2. Paste the contents of `supabase/schema.sql` (in this project) and run it.
-3. Before running it, edit the email inside `is_coach()` near the top of the
-   file — that's the account that gets coach access (`/coach`). Add more
-   emails to that `in (...)` list as more coaches join.
+
+Coach access (`/coach`) is controlled by a single `is_coach` boolean column on
+`profiles` — everyone starts `false`. Once you've registered an account
+(step 7 below), flip yours on: **SQL Editor → New query** →
+`update profiles set is_coach = true where email = 'you@example.com';`. Add
+more coaches the same way as they join. `is_coach()` and the notification
+system both read this one column, so there's exactly one place to manage who
+has coach access — no function to edit and keep in sync.
 
 This creates: `profiles` (auto-created per signup, holds each rider's level),
 `trial_slots` + `trial_bookings` (the weekly trial-session schedule and
@@ -98,9 +103,9 @@ npm run dev
 
 Open http://localhost:3000 and try **Register** → check your email (or
 Supabase's **Authentication → Users** tab) → **Sign in** → you should land on
-**My account**. Visiting `/account` or `/coach` signed-out redirects to
-`/signin`; signing in as the coach email lands on `/coach` instead of
-`/account`.
+**My account**. Now flip on coach access for that account (see step 3) and
+sign in again — you should land on `/coach` instead of `/account`. Visiting
+`/account` or `/coach` signed-out redirects to `/signin`.
 
 ## 8. Deploy
 

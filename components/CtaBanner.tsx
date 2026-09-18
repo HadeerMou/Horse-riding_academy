@@ -7,7 +7,7 @@ export default function CtaBanner() {
   const { ref, revealClassName } = useReveal<HTMLElement>();
 
   return (
-    <section ref={ref} className={`cta-banner ${revealClassName}`} aria-labelledby="cta-title">
+    <section ref={ref} className={`cta-banner ${revealClassName}`} aria-labelledby="cta-title" data-header-hide="true">
       <h2 id="cta-title">
         Your first stride
         <br />
